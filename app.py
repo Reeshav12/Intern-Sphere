@@ -9,7 +9,11 @@ from werkzeug.utils import secure_filename
 from openai import OpenAI
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key')
+app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key-change-in-production')
+
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt'}
