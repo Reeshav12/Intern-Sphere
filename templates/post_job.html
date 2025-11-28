@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Post a Job{% endblock %}
+
+{% block content %}
+<div class="post-job-page">
+    <div class="container">
+        <div class="page-header">
+            <h1>Post a New Job</h1>
+            <p>Find the perfect candidate for your position</p>
+        </div>
+        
+        <form class="job-form" method="POST" action="{{ url_for('post_job') }}">
+            <div class="form-section">
+                <h2>Job Details</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="title">Job Title *</label>
+                        <input type="text" id="title" name="title" required placeholder="e.g., Senior Software Engineer">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" placeholder="e.g., New York, NY or Remote">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="job_type">Job Type</label>
+                        <select id="job_type" name="job_type">
+                            <option value="full-time">Full-time</option>
+                            <option value="part-time">Part-time</option>
+                            <option value="contract">Contract</option>
+                            <option value="internship">Internship</option>
+                            <option value="remote">Remote</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="experience_level">Experience Level</label>
+                        <select id="experience_level" name="experience_level">
+                            <option value="">Select Level</option>
+                            <option value="entry">Entry Level</option>
+                            <option value="mid">Mid Level</option>
+                            <option value="senior">Senior Level</option>
+                            <option value="executive">Executive</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="salary_min">Minimum Salary ($/year)</label>
+                        <input type="number" id="salary_min" name="salary_min" placeholder="50000">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="salary_max">Maximum Salary ($/year)</label>
+                        <input type="number" id="salary_max" name="salary_max" placeholder="80000">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Job Description</h2>
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <textarea id="description" name="description" rows="8" required placeholder="Describe the role, responsibilities, and what a typical day looks like..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="requirements">Requirements</label>
+                    <textarea id="requirements" name="requirements" rows="6" placeholder="List the qualifications, education, and experience required..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="skills_required">Required Skills (comma separated)</label>
+                    <input type="text" id="skills_required" name="skills_required" placeholder="Python, React, AWS, Agile">
+                </div>
+                
+                <div class="form-group">
+                    <label for="benefits">Benefits & Perks</label>
+                    <textarea id="benefits" name="benefits" rows="4" placeholder="Health insurance, 401k, flexible hours, remote work..."></textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Post Job</button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

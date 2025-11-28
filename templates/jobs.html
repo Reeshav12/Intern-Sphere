@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Jobs{% endblock %}
+
+{% block content %}
+<div class="jobs-page">
+    <div class="container">
+        <div class="page-header">
+            <h1>Find Your Perfect Job</h1>
+            <p>Browse through thousands of opportunities</p>
+        </div>
+        
+        <div class="jobs-layout">
+            <aside class="filters-sidebar">
+                <form class="filters-form" method="GET" action="{{ url_for('jobs_list') }}">
+                    <div class="filter-group">
+                        <label>Search</label>
+                        <input type="text" name="search" value="{{ search }}" placeholder="Job title or keywords">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Location</label>
+                        <input type="text" name="location" value="{{ location }}" placeholder="City or Remote">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Job Type</label>
+                        <select name="job_type">
+                            <option value="">All Types</option>
+                            <option value="full-time" {{ 'selected' if job_type == 'full-time' }}>Full-time</option>
+                            <option value="part-time" {{ 'selected' if job_type == 'part-time' }}>Part-time</option>
+                            <option value="contract" {{ 'selected' if job_type == 'contract' }}>Contract</option>
+                            <option value="internship" {{ 'selected' if job_type == 'internship' }}>Internship</option>
+                            <option value="remote" {{ 'selected' if job_type == 'remote' }}>Remote</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Experience Level</label>
+                        <select name="experience">
+                            <option value="">All Levels</option>
+                            <option value="entry" {{ 'selected' if experience == 'entry' }}>Entry Level</option>
+                            <option value="mid" {{ 'selected' if experience == 'mid' }}>Mid Level</option>
+                            <option value="senior" {{ 'selected' if experience == 'senior' }}>Senior Level</option>
+                            <option value="executive" {{ 'selected' if experience == 'executive' }}>Executive</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full">Apply Filters</button>
+                    <a href="{{ url_for('jobs_list') }}" class="btn btn-outline btn-full">Clear Filters</a>
+                </form>
+            </aside>
+            
+            <main class="jobs-main">
+                <div class="results-header">
+                    <span>{{ jobs|length }} job{{ 's' if jobs|length != 1 }} found</span>
+                </div>
+                
+                <div class="jobs-list">
+                    {% for job in jobs %}
+                    <div class="job-card-horizontal">
+                        <div class="job-card-left">
+                            <div class="company-logo">
+                                {{ (job.company_name or job.company or 'C')[0] }}
+                            </div>
+                        </div>
+                        <div class="job-card-content">
+                            <h3 class="job-title">
+                                <a href="{{ url_for('job_detail', job_id=job.id) }}">{{ job.title }}</a>
+                            </h3>
+                            <p class="company-name">{{ job.company_name or job.company }}</p>
+                            <div class="job-meta">
+                                <span class="job-location">📍 {{ job.location or 'Remote' }}</span>
+                                <span class="job-type-badge">{{ job.job_type or 'Full-time' }}</span>
+                                {% if job.experience_level %}
+                                <span class="experience-badge">{{ job.experience_level|title }}</span>
+                                {% endif %}
+                            </div>
+                            {% if job.salary_min and job.salary_max %}
+                            <div class="job-salary">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }} / year</div>
+                            {% endif %}
+                        </div>
+                        <div class="job-card-right">
+                            <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-primary">View Job</a>
+                            <span class="post-date">{{ job.created_at[:10] }}</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="no-results">
+                        <h3>No jobs found</h3>
+                        <p>Try adjusting your search filters or <a href="{{ url_for('jobs_list') }}">view all jobs</a></p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+{% endblock %}

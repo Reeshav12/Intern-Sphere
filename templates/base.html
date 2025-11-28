@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}JobConnect{% endblock %} - Find Your Dream Job</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="{{ url_for('index') }}" class="logo">
+                <span class="logo-icon">JC</span>
+                <span class="logo-text">JobConnect</span>
+            </a>
+            
+            <div class="nav-links">
+                <a href="{{ url_for('jobs_list') }}" class="nav-link">Find Jobs</a>
+                
+                {% if session.get('user_id') %}
+                    {% if session.get('user_type') == 'recruiter' %}
+                        <a href="{{ url_for('candidates') }}" class="nav-link">Find Candidates</a>
+                        <a href="{{ url_for('post_job') }}" class="nav-link">Post a Job</a>
+                    {% endif %}
+                    <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
+                    <a href="{{ url_for('profile') }}" class="nav-link">Profile</a>
+                    <a href="{{ url_for('logout') }}" class="nav-link btn btn-outline">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('register') }}" class="nav-link btn btn-primary">Sign Up</a>
+                {% endif %}
+            </div>
+            
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+    
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="{{ url_for('jobs_list') }}">Find Jobs</a>
+        {% if session.get('user_id') %}
+            {% if session.get('user_type') == 'recruiter' %}
+                <a href="{{ url_for('candidates') }}">Find Candidates</a>
+                <a href="{{ url_for('post_job') }}">Post a Job</a>
+            {% endif %}
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('profile') }}">Profile</a>
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('register') }}">Sign Up</a>
+        {% endif %}
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        {{ message }}
+                        <button onclick="this.parentElement.remove()">×</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>JobConnect</h3>
+                    <p>Connecting talent with opportunity. AI-powered job matching for the modern workforce.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>For Job Seekers</h4>
+                    <a href="{{ url_for('jobs_list') }}">Browse Jobs</a>
+                    <a href="{{ url_for('register') }}">Create Profile</a>
+                </div>
+                <div class="footer-section">
+                    <h4>For Employers</h4>
+                    <a href="{{ url_for('register') }}">Post Jobs</a>
+                    <a href="{{ url_for('candidates') }}">Find Candidates</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 JobConnect. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

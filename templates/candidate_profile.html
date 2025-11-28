@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ profile.full_name or 'Candidate' }} - Profile{% endblock %}
+
+{% block content %}
+<div class="candidate-profile-page">
+    <div class="container">
+        <a href="{{ url_for('candidates') }}" class="back-link">← Back to Candidates</a>
+        
+        <div class="profile-layout">
+            <main class="profile-main">
+                <div class="profile-header-card">
+                    <div class="profile-avatar-large">
+                        {{ (profile.full_name or 'C')[0] }}
+                    </div>
+                    <div class="profile-header-info">
+                        <h1>{{ profile.full_name or 'Anonymous Candidate' }}</h1>
+                        <p class="profile-title">{{ profile.title or 'Job Seeker' }}</p>
+                        <div class="profile-meta">
+                            <span>📍 {{ profile.location or 'Location not specified' }}</span>
+                            <span>📧 {{ profile.email }}</span>
+                            {% if profile.phone %}
+                            <span>📱 {{ profile.phone }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="profile-links">
+                            {% if profile.linkedin_url %}
+                            <a href="{{ profile.linkedin_url }}" target="_blank" class="btn btn-outline btn-small">LinkedIn</a>
+                            {% endif %}
+                            {% if profile.portfolio_url %}
+                            <a href="{{ profile.portfolio_url }}" target="_blank" class="btn btn-outline btn-small">Portfolio</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if profile.bio %}
+                <div class="profile-section">
+                    <h2>About</h2>
+                    <p>{{ profile.bio }}</p>
+                </div>
+                {% endif %}
+                
+                {% if profile.skills %}
+                <div class="profile-section">
+                    <h2>Skills</h2>
+                    <div class="skills-tags">
+                        {% for skill in profile.skills.split(',') %}
+                        <span class="skill-tag">{{ skill.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if profile.experience %}
+                <div class="profile-section">
+                    <h2>Experience</h2>
+                    <div class="experience-content">
+                        {{ profile.experience }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if profile.education %}
+                <div class="profile-section">
+                    <h2>Education</h2>
+                    <div class="education-content">
+                        {{ profile.education }}
+                    </div>
+                </div>
+                {% endif %}
+            </main>
+            
+            <aside class="profile-sidebar">
+                {% if ai_insights %}
+                <div class="ai-insights-sidebar">
+                    <h3>🤖 AI Resume Insights</h3>
+                    <div class="insight-score-small">
+                        <span class="score">{{ ai_insights.overall_score }}</span>
+                        <span class="label">Resume Score</span>
+                    </div>
+                    
+                    <div class="insight-item">
+                        <h4>Experience Level</h4>
+                        <p>{{ ai_insights.experience_level|title }}</p>
+                    </div>
+                    
+                    <div class="insight-item">
+                        <h4>Strengths</h4>
+                        <ul>
+                            {% for strength in ai_insights.strengths[:3] %}
+                            <li>{{ strength }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <div class="insight-item">
+                        <h4>Suggested Roles</h4>
+                        <div class="tags-small">
+                            {% for title in ai_insights.suggested_job_titles[:3] %}
+                            <span class="tag-small">{{ title }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="insight-item">
+                        <h4>Industry Fit</h4>
+                        <div class="tags-small">
+                            {% for industry in ai_insights.industry_fit %}
+                            <span class="tag-small">{{ industry }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="contact-card">
+                    <h3>Contact Information</h3>
+                    <div class="contact-item">
+                        <span class="label">Email</span>
+                        <span class="value">{{ profile.email }}</span>
+                    </div>
+                    {% if profile.phone %}
+                    <div class="contact-item">
+                        <span class="label">Phone</span>
+                        <span class="value">{{ profile.phone }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>
+{% endblock %}

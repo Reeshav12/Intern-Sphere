@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ job.title }} - {{ job.company }}{% endblock %}
+
+{% block content %}
+<div class="job-detail-page">
+    <div class="container">
+        <div class="job-detail-layout">
+            <main class="job-detail-main">
+                <div class="job-header">
+                    <div class="company-logo-large">
+                        {{ (job.company_name or job.company or 'C')[0] }}
+                    </div>
+                    <div class="job-header-info">
+                        <h1>{{ job.title }}</h1>
+                        <p class="company-link">{{ job.company_name or job.company }}</p>
+                        <div class="job-meta-large">
+                            <span>📍 {{ job.location or 'Remote' }}</span>
+                            <span>💼 {{ job.job_type or 'Full-time' }}</span>
+                            {% if job.experience_level %}
+                            <span>📊 {{ job.experience_level|title }} Level</span>
+                            {% endif %}
+                        </div>
+                        {% if job.salary_min and job.salary_max %}
+                        <div class="salary-large">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }} / year</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="job-section">
+                    <h2>Job Description</h2>
+                    <div class="job-description">
+                        {{ job.description|safe if job.description else 'No description provided.' }}
+                    </div>
+                </div>
+                
+                {% if job.requirements %}
+                <div class="job-section">
+                    <h2>Requirements</h2>
+                    <div class="job-requirements">
+                        {{ job.requirements|safe }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if job.skills_required %}
+                <div class="job-section">
+                    <h2>Skills Required</h2>
+                    <div class="skills-tags">
+                        {% for skill in job.skills_required.split(',') %}
+                        <span class="skill-tag">{{ skill.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if job.benefits %}
+                <div class="job-section">
+                    <h2>Benefits</h2>
+                    <div class="job-benefits">
+                        {{ job.benefits|safe }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if job.company_description %}
+                <div class="job-section">
+                    <h2>About {{ job.company_name or job.company }}</h2>
+                    <p>{{ job.company_description }}</p>
+                    {% if job.company_website %}
+                    <a href="{{ job.company_website }}" target="_blank" class="company-website">Visit Company Website →</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </main>
+            
+            <aside class="job-detail-sidebar">
+                <div class="apply-card">
+                    {% if session.get('user_type') == 'seeker' %}
+                        {% if has_applied %}
+                        <div class="already-applied">
+                            <span class="check-icon">✓</span>
+                            <span>You've already applied</span>
+                        </div>
+                        {% else %}
+                        <button class="btn btn-primary btn-full" onclick="showApplyModal()">Apply Now</button>
+                        {% endif %}
+                        
+                        <button class="btn {{ 'btn-secondary' if is_saved else 'btn-outline' }} btn-full save-btn" onclick="toggleSaveJob({{ job.id }})">
+                            {{ '★ Saved' if is_saved else '☆ Save Job' }}
+                        </button>
+                    {% elif session.get('user_type') == 'recruiter' %}
+                        <p class="recruiter-notice">You're viewing as a recruiter</p>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-full">Login to Apply</a>
+                        <p class="login-hint">Create an account to apply for this job</p>
+                    {% endif %}
+                </div>
+                
+                <div class="job-info-card">
+                    <h3>Job Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Posted</span>
+                        <span class="info-value">{{ job.created_at[:10] }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Job Type</span>
+                        <span class="info-value">{{ job.job_type or 'Full-time' }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Location</span>
+                        <span class="info-value">{{ job.location or 'Remote' }}</span>
+                    </div>
+                    {% if job.experience_level %}
+                    <div class="info-item">
+                        <span class="info-label">Experience</span>
+                        <span class="info-value">{{ job.experience_level|title }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if similar_jobs %}
+                <div class="similar-jobs-card">
+                    <h3>Similar Jobs</h3>
+                    {% for similar in similar_jobs %}
+                    <a href="{{ url_for('job_detail', job_id=similar.id) }}" class="similar-job-item">
+                        <strong>{{ similar.title }}</strong>
+                        <span>{{ similar.company_name or similar.company }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="applyModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Apply for {{ job.title }}</h2>
+            <button class="modal-close" onclick="hideApplyModal()">×</button>
+        </div>
+        <form id="applyForm" onsubmit="submitApplication(event)">
+            <div class="form-group">
+                <label for="cover_letter">Cover Letter (Optional)</label>
+                <textarea id="cover_letter" name="cover_letter" rows="6" placeholder="Tell the employer why you're a great fit for this role..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="hideApplyModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit Application</button>
+            </div>
+        </form>
+        <div id="applyResult"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showApplyModal() {
+    document.getElementById('applyModal').classList.add('active');
+}
+
+function hideApplyModal() {
+    document.getElementById('applyModal').classList.remove('active');
+}
+
+function submitApplication(e) {
+    e.preventDefault();
+    const formData = new FormData(document.getElementById('applyForm'));
+    const resultDiv = document.getElementById('applyResult');
+    
+    fetch('/apply/{{ job.id }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.innerHTML = '<div class="success">' + data.message + '</div>';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            resultDiv.innerHTML = '<div class="error">' + data.error + '</div>';
+        }
+    })
+    .catch(err => {
+        resultDiv.innerHTML = '<div class="error">Failed to submit application.</div>';
+    });
+}
+
+function toggleSaveJob(jobId) {
+    fetch('/save-job/' + jobId, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

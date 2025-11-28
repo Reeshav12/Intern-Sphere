@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Create Your Account</h1>
+            <p>Join JobConnect and start your journey</p>
+        </div>
+        
+        <form class="auth-form" method="POST" action="{{ url_for('register') }}">
+            <div class="user-type-selector">
+                <label class="user-type-option">
+                    <input type="radio" name="user_type" value="seeker" checked>
+                    <div class="user-type-card">
+                        <span class="user-type-icon">👤</span>
+                        <span class="user-type-label">Job Seeker</span>
+                        <span class="user-type-desc">Find your dream job</span>
+                    </div>
+                </label>
+                <label class="user-type-option">
+                    <input type="radio" name="user_type" value="recruiter">
+                    <div class="user-type-card">
+                        <span class="user-type-icon">🏢</span>
+                        <span class="user-type-label">Recruiter</span>
+                        <span class="user-type-desc">Find top talent</span>
+                    </div>
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required placeholder="Enter your email">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required minlength="6" placeholder="Create a password">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="6" placeholder="Confirm your password">
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+        </form>
+        
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

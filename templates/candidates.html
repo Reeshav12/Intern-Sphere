@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Candidates{% endblock %}
+
+{% block content %}
+<div class="candidates-page">
+    <div class="container">
+        <div class="page-header">
+            <h1>Find Candidates</h1>
+            <p>Search through our talent pool</p>
+        </div>
+        
+        <div class="candidates-layout">
+            <aside class="filters-sidebar">
+                <form class="filters-form" method="GET" action="{{ url_for('candidates') }}">
+                    <div class="filter-group">
+                        <label>Search</label>
+                        <input type="text" name="search" value="{{ search }}" placeholder="Name, title, or skills">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Location</label>
+                        <input type="text" name="location" value="{{ location }}" placeholder="City or Remote">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label>Skills</label>
+                        <input type="text" name="skills" value="{{ skills }}" placeholder="Python, React, etc.">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full">Search</button>
+                    <a href="{{ url_for('candidates') }}" class="btn btn-outline btn-full">Clear</a>
+                </form>
+            </aside>
+            
+            <main class="candidates-main">
+                <div class="results-header">
+                    <span>{{ candidates|length }} candidate{{ 's' if candidates|length != 1 }} found</span>
+                </div>
+                
+                <div class="candidates-grid">
+                    {% for candidate in candidates %}
+                    <div class="candidate-card">
+                        <div class="candidate-header">
+                            <div class="candidate-avatar">
+                                {{ (candidate.full_name or 'C')[0] }}
+                            </div>
+                            <div class="candidate-info">
+                                <h3>{{ candidate.full_name or 'Anonymous' }}</h3>
+                                <p class="candidate-title">{{ candidate.title or 'Job Seeker' }}</p>
+                                <p class="candidate-location">📍 {{ candidate.location or 'Not specified' }}</p>
+                            </div>
+                        </div>
+                        
+                        {% if candidate.bio %}
+                        <p class="candidate-bio">{{ candidate.bio[:150] }}{{ '...' if candidate.bio|length > 150 }}</p>
+                        {% endif %}
+                        
+                        {% if candidate.skills %}
+                        <div class="candidate-skills">
+                            {% for skill in candidate.skills.split(',')[:5] %}
+                            <span class="skill-tag">{{ skill.strip() }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="candidate-actions">
+                            <a href="{{ url_for('candidate_profile', user_id=candidate.user_id) }}" class="btn btn-primary">View Profile</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="no-results">
+                        <h3>No candidates found</h3>
+                        <p>Try adjusting your search criteria</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+{% endblock %}

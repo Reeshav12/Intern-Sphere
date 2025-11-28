@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Applications for {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="applications-page">
+    <div class="container">
+        <div class="page-header">
+            <div class="header-with-back">
+                <a href="{{ url_for('dashboard') }}" class="back-link">← Back to Dashboard</a>
+                <h1>Applications for {{ job.title }}</h1>
+                <p>{{ applications|length }} applicant{{ 's' if applications|length != 1 }}</p>
+            </div>
+        </div>
+        
+        {% if applications %}
+        <div class="applications-grid">
+            {% for app in applications %}
+            <div class="applicant-card">
+                <div class="applicant-header">
+                    <div class="applicant-avatar">
+                        {{ (app.full_name or 'A')[0] }}
+                    </div>
+                    <div class="applicant-info">
+                        <h3>{{ app.full_name or 'Anonymous Applicant' }}</h3>
+                        <p class="applicant-title">{{ app.title or 'No title specified' }}</p>
+                        <p class="applicant-location">📍 {{ app.location or 'Location not specified' }}</p>
+                    </div>
+                    <span class="status status-{{ app.status }}">{{ app.status|title }}</span>
+                </div>
+                
+                {% if app.skills %}
+                <div class="applicant-skills">
+                    <h4>Skills</h4>
+                    <div class="skills-tags">
+                        {% for skill in app.skills.split(',')[:5] %}
+                        <span class="skill-tag">{{ skill.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if app.cover_letter %}
+                <div class="cover-letter-section">
+                    <h4>Cover Letter</h4>
+                    <p>{{ app.cover_letter[:300] }}{{ '...' if app.cover_letter|length > 300 }}</p>
+                </div>
+                {% endif %}
+                
+                {% if app.ai_insights %}
+                <div class="ai-badge">
+                    <span>🤖 AI Analysis Available</span>
+                </div>
+                {% endif %}
+                
+                <div class="applicant-actions">
+                    <a href="{{ url_for('candidate_profile', user_id=app.seeker_id) }}" class="btn btn-outline">View Full Profile</a>
+                    
+                    <div class="status-update">
+                        <select onchange="updateStatus({{ app.id }}, this.value)" class="status-select">
+                            <option value="pending" {{ 'selected' if app.status == 'pending' }}>Pending</option>
+                            <option value="reviewing" {{ 'selected' if app.status == 'reviewing' }}>Reviewing</option>
+                            <option value="shortlisted" {{ 'selected' if app.status == 'shortlisted' }}>Shortlisted</option>
+                            <option value="interviewed" {{ 'selected' if app.status == 'interviewed' }}>Interviewed</option>
+                            <option value="offered" {{ 'selected' if app.status == 'offered' }}>Offered</option>
+                            <option value="hired" {{ 'selected' if app.status == 'hired' }}>Hired</option>
+                            <option value="rejected" {{ 'selected' if app.status == 'rejected' }}>Rejected</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="applicant-meta">
+                    <span>Applied: {{ app.applied_at[:10] }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state centered">
+            <h3>No applications yet</h3>
+            <p>Share your job posting to attract candidates</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateStatus(appId, status) {
+    const formData = new FormData();
+    formData.append('status', status);
+    
+    fetch('/update-application-status/' + appId, {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

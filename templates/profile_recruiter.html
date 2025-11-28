@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Company Profile{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="container">
+        <div class="page-header">
+            <h1>Company Profile</h1>
+            <p>Set up your company profile to attract top talent</p>
+        </div>
+        
+        <form class="profile-form" method="POST" action="{{ url_for('profile') }}">
+            <div class="form-section">
+                <h2>Your Information</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="full_name">Your Name</label>
+                        <input type="text" id="full_name" name="full_name" value="{{ profile.full_name or '' }}" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" value="{{ profile.phone or '' }}" placeholder="+1 234 567 8900">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Company Information</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="company_name">Company Name *</label>
+                        <input type="text" id="company_name" name="company_name" value="{{ profile.company_name or '' }}" required placeholder="Acme Corporation">
+                    </div>
+                    <div class="form-group">
+                        <label for="industry">Industry</label>
+                        <select id="industry" name="industry">
+                            <option value="">Select Industry</option>
+                            <option value="technology" {{ 'selected' if profile.industry == 'technology' }}>Technology</option>
+                            <option value="healthcare" {{ 'selected' if profile.industry == 'healthcare' }}>Healthcare</option>
+                            <option value="finance" {{ 'selected' if profile.industry == 'finance' }}>Finance</option>
+                            <option value="education" {{ 'selected' if profile.industry == 'education' }}>Education</option>
+                            <option value="retail" {{ 'selected' if profile.industry == 'retail' }}>Retail</option>
+                            <option value="manufacturing" {{ 'selected' if profile.industry == 'manufacturing' }}>Manufacturing</option>
+                            <option value="consulting" {{ 'selected' if profile.industry == 'consulting' }}>Consulting</option>
+                            <option value="other" {{ 'selected' if profile.industry == 'other' }}>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="company_size">Company Size</label>
+                        <select id="company_size" name="company_size">
+                            <option value="">Select Size</option>
+                            <option value="1-10" {{ 'selected' if profile.company_size == '1-10' }}>1-10 employees</option>
+                            <option value="11-50" {{ 'selected' if profile.company_size == '11-50' }}>11-50 employees</option>
+                            <option value="51-200" {{ 'selected' if profile.company_size == '51-200' }}>51-200 employees</option>
+                            <option value="201-500" {{ 'selected' if profile.company_size == '201-500' }}>201-500 employees</option>
+                            <option value="501-1000" {{ 'selected' if profile.company_size == '501-1000' }}>501-1000 employees</option>
+                            <option value="1000+" {{ 'selected' if profile.company_size == '1000+' }}>1000+ employees</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Headquarters Location</label>
+                        <input type="text" id="location" name="location" value="{{ profile.location or '' }}" placeholder="San Francisco, CA">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="company_website">Company Website</label>
+                    <input type="url" id="company_website" name="company_website" value="{{ profile.company_website or '' }}" placeholder="https://www.yourcompany.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="company_description">Company Description</label>
+                    <textarea id="company_description" name="company_description" rows="5" placeholder="Tell candidates about your company, culture, mission, and what makes it a great place to work...">{{ profile.company_description or '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Profile</button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

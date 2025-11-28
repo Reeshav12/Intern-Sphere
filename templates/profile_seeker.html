@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="container">
+        <div class="page-header">
+            <h1>My Profile</h1>
+            <p>Complete your profile to increase your chances of getting hired</p>
+        </div>
+        
+        <form class="profile-form" method="POST" action="{{ url_for('profile') }}">
+            <div class="form-section">
+                <h2>Personal Information</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="full_name">Full Name</label>
+                        <input type="text" id="full_name" name="full_name" value="{{ profile.full_name or '' }}" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" value="{{ profile.phone or '' }}" placeholder="+1 234 567 8900">
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" value="{{ profile.location or '' }}" placeholder="New York, NY">
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Professional Title</label>
+                        <input type="text" id="title" name="title" value="{{ profile.title or '' }}" placeholder="Senior Software Engineer">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Professional Summary</h2>
+                <div class="form-group">
+                    <label for="bio">About Me</label>
+                    <textarea id="bio" name="bio" rows="4" placeholder="Write a brief summary about yourself, your experience, and what you're looking for...">{{ profile.bio or '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Skills & Experience</h2>
+                <div class="form-group">
+                    <label for="skills">Skills (comma separated)</label>
+                    <input type="text" id="skills" name="skills" value="{{ profile.skills or '' }}" placeholder="Python, JavaScript, React, Project Management, Leadership">
+                </div>
+                <div class="form-group">
+                    <label for="experience">Work Experience</label>
+                    <textarea id="experience" name="experience" rows="6" placeholder="Describe your work experience...">{{ profile.experience or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="education">Education</label>
+                    <textarea id="education" name="education" rows="4" placeholder="List your education background...">{{ profile.education or '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Links</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="linkedin_url">LinkedIn Profile</label>
+                        <input type="url" id="linkedin_url" name="linkedin_url" value="{{ profile.linkedin_url or '' }}" placeholder="https://linkedin.com/in/yourprofile">
+                    </div>
+                    <div class="form-group">
+                        <label for="portfolio_url">Portfolio / Website</label>
+                        <input type="url" id="portfolio_url" name="portfolio_url" value="{{ profile.portfolio_url or '' }}" placeholder="https://yourwebsite.com">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Resume</h2>
+                <div class="resume-upload-area">
+                    {% if profile.resume_path %}
+                    <div class="current-resume">
+                        <span class="file-icon">📄</span>
+                        <span>Resume uploaded</span>
+                        <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('resumeInput').click()">Replace</button>
+                    </div>
+                    {% else %}
+                    <div class="upload-placeholder" onclick="document.getElementById('resumeInput').click()">
+                        <span class="upload-icon">📤</span>
+                        <span>Click to upload your resume</span>
+                        <span class="upload-hint">PDF, DOC, DOCX, or TXT (Max 16MB)</span>
+                    </div>
+                    {% endif %}
+                    <input type="file" id="resumeInput" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="uploadResume(this)">
+                </div>
+                <div id="uploadStatus"></div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Profile</button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function uploadResume(input) {
+    if (input.files && input.files[0]) {
+        const formData = new FormData();
+        formData.append('resume', input.files[0]);
+        
+        const statusDiv = document.getElementById('uploadStatus');
+        statusDiv.innerHTML = '<div class="loading">Uploading resume...</div>';
+        
+        fetch('/upload-resume', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                statusDiv.innerHTML = '<div class="success">Resume uploaded successfully!</div>';
+                location.reload();
+            } else {
+                statusDiv.innerHTML = '<div class="error">' + data.error + '</div>';
+            }
+        })
+        .catch(err => {
+            statusDiv.innerHTML = '<div class="error">Failed to upload resume.</div>';
+        });
+    }
+}
+</script>
+{% endblock %}

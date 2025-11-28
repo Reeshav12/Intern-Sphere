@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Job{% endblock %}
+
+{% block content %}
+<div class="post-job-page">
+    <div class="container">
+        <div class="page-header">
+            <h1>Edit Job</h1>
+            <p>Update your job posting</p>
+        </div>
+        
+        <form class="job-form" method="POST" action="{{ url_for('edit_job', job_id=job.id) }}">
+            <div class="form-section">
+                <h2>Job Details</h2>
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label for="title">Job Title *</label>
+                        <input type="text" id="title" name="title" value="{{ job.title }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" name="location" value="{{ job.location or '' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="job_type">Job Type</label>
+                        <select id="job_type" name="job_type">
+                            <option value="full-time" {{ 'selected' if job.job_type == 'full-time' }}>Full-time</option>
+                            <option value="part-time" {{ 'selected' if job.job_type == 'part-time' }}>Part-time</option>
+                            <option value="contract" {{ 'selected' if job.job_type == 'contract' }}>Contract</option>
+                            <option value="internship" {{ 'selected' if job.job_type == 'internship' }}>Internship</option>
+                            <option value="remote" {{ 'selected' if job.job_type == 'remote' }}>Remote</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="experience_level">Experience Level</label>
+                        <select id="experience_level" name="experience_level">
+                            <option value="">Select Level</option>
+                            <option value="entry" {{ 'selected' if job.experience_level == 'entry' }}>Entry Level</option>
+                            <option value="mid" {{ 'selected' if job.experience_level == 'mid' }}>Mid Level</option>
+                            <option value="senior" {{ 'selected' if job.experience_level == 'senior' }}>Senior Level</option>
+                            <option value="executive" {{ 'selected' if job.experience_level == 'executive' }}>Executive</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="salary_min">Minimum Salary ($/year)</label>
+                        <input type="number" id="salary_min" name="salary_min" value="{{ job.salary_min or '' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="salary_max">Maximum Salary ($/year)</label>
+                        <input type="number" id="salary_max" name="salary_max" value="{{ job.salary_max or '' }}">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_active" {{ 'checked' if job.is_active }}>
+                        <span>Job is active and visible to job seekers</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Job Description</h2>
+                <div class="form-group">
+                    <label for="description">Description *</label>
+                    <textarea id="description" name="description" rows="8" required>{{ job.description or '' }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="requirements">Requirements</label>
+                    <textarea id="requirements" name="requirements" rows="6">{{ job.requirements or '' }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="skills_required">Required Skills (comma separated)</label>
+                    <input type="text" id="skills_required" name="skills_required" value="{{ job.skills_required or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="benefits">Benefits & Perks</label>
+                    <textarea id="benefits" name="benefits" rows="4">{{ job.benefits or '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

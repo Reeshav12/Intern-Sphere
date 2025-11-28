@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container">
+        <h1>Find Your <span class="highlight">Dream Job</span> Today</h1>
+        <p class="hero-subtitle">Connect with top employers, get AI-powered resume insights, and discover opportunities that match your skills.</p>
+        
+        <form class="hero-search" action="{{ url_for('jobs_list') }}" method="GET">
+            <div class="search-inputs">
+                <input type="text" name="search" placeholder="Job title, keywords, or company">
+                <input type="text" name="location" placeholder="Location">
+                <button type="submit" class="btn btn-primary">Search Jobs</button>
+            </div>
+        </form>
+        
+        <div class="hero-stats">
+            <div class="stat">
+                <span class="stat-number">{{ stats.jobs }}</span>
+                <span class="stat-label">Active Jobs</span>
+            </div>
+            <div class="stat">
+                <span class="stat-number">{{ stats.companies }}</span>
+                <span class="stat-label">Companies</span>
+            </div>
+            <div class="stat">
+                <span class="stat-number">{{ stats.seekers }}</span>
+                <span class="stat-label">Job Seekers</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="features">
+    <div class="container">
+        <h2 class="section-title">Why Choose JobConnect?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>AI Resume Analysis</h3>
+                <p>Get instant feedback on your resume with our AI-powered analyzer. Receive personalized suggestions to improve your chances.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Smart Job Matching</h3>
+                <p>Our AI matches your skills and experience with the perfect job opportunities. No more endless scrolling.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏢</div>
+                <h3>Top Employers</h3>
+                <p>Connect directly with verified recruiters from leading companies across all industries.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Career Insights</h3>
+                <p>Understand your market value, identify skill gaps, and plan your career growth with data-driven insights.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="featured-jobs">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Featured Jobs</h2>
+            <a href="{{ url_for('jobs_list') }}" class="btn btn-outline">View All Jobs</a>
+        </div>
+        
+        <div class="jobs-grid">
+            {% for job in featured_jobs %}
+            <div class="job-card">
+                <div class="job-card-header">
+                    <div class="company-logo">
+                        {{ (job.company_name or job.company or 'C')[0] }}
+                    </div>
+                    <div class="job-info">
+                        <h3 class="job-title">{{ job.title }}</h3>
+                        <p class="company-name">{{ job.company_name or job.company }}</p>
+                    </div>
+                </div>
+                <div class="job-details">
+                    <span class="job-location">📍 {{ job.location or 'Remote' }}</span>
+                    <span class="job-type">{{ job.job_type or 'Full-time' }}</span>
+                </div>
+                {% if job.salary_min and job.salary_max %}
+                <div class="job-salary">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }}</div>
+                {% endif %}
+                <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary job-apply-btn">View Details</a>
+            </div>
+            {% else %}
+            <div class="no-jobs">
+                <p>No jobs posted yet. Be the first to <a href="{{ url_for('register') }}">post a job</a>!</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <div class="cta-text">
+                <h2>Ready to Take the Next Step?</h2>
+                <p>Join thousands of professionals who found their dream jobs through JobConnect.</p>
+            </div>
+            <div class="cta-buttons">
+                <a href="{{ url_for('register') }}?type=seeker" class="btn btn-primary">I'm Looking for a Job</a>
+                <a href="{{ url_for('register') }}?type=recruiter" class="btn btn-outline-white">I'm Hiring</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
