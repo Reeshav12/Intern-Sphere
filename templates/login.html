@@ -7,18 +7,18 @@
     <div class="auth-container">
         <div class="auth-header">
             <h1>Welcome Back</h1>
-            <p>Login to your JobConnect account</p>
+            <p>Login to your InternSphere account</p>
         </div>
         
         <form class="auth-form" method="POST" action="{{ url_for('login') }}">
             <div class="form-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" required placeholder="Enter your email">
+                <input type="email" id="email" name="email" required autocomplete="email" placeholder="Enter your email">
             </div>
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="Enter your password">
+                <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Enter your password">
             </div>
             
             <button type="submit" class="btn btn-primary btn-full">Login</button>

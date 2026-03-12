@@ -100,13 +100,6 @@ function debounce(func, wait) {
     };
 }
 
-const searchInputs = document.querySelectorAll('input[name="search"]');
-searchInputs.forEach(input => {
-    input.addEventListener('input', debounce(function() {
-        console.log('Search query:', this.value);
-    }, 300));
-});
-
 window.addEventListener('load', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const userType = urlParams.get('type');

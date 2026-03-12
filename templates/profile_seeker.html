@@ -103,6 +103,20 @@
 
 {% block extra_js %}
 <script>
+function renderUploadedResumeState() {
+    const uploadArea = document.querySelector('.resume-upload-area');
+    if (!uploadArea) return;
+
+    uploadArea.innerHTML = `
+        <div class="current-resume">
+            <span class="file-icon">📄</span>
+            <span>Resume uploaded</span>
+            <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('resumeInput').click()">Replace</button>
+        </div>
+        <input type="file" id="resumeInput" accept=".pdf,.doc,.docx,.txt" style="display:none" onchange="uploadResume(this)">
+    `;
+}
+
 function uploadResume(input) {
     if (input.files && input.files[0]) {
         const formData = new FormData();
@@ -119,7 +133,7 @@ function uploadResume(input) {
         .then(data => {
             if (data.success) {
                 statusDiv.innerHTML = '<div class="success">Resume uploaded successfully!</div>';
-                location.reload();
+                renderUploadedResumeState();
             } else {
                 statusDiv.innerHTML = '<div class="error">' + data.error + '</div>';
             }

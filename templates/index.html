@@ -5,29 +5,57 @@
 {% block content %}
 <section class="hero">
     <div class="container">
-        <h1>Find Your <span class="highlight">Dream Job</span> Today</h1>
-        <p class="hero-subtitle">Connect with top employers, get AI-powered resume insights, and discover opportunities that match your skills.</p>
-        
-        <form class="hero-search" action="{{ url_for('jobs_list') }}" method="GET">
-            <div class="search-inputs">
-                <input type="text" name="search" placeholder="Job title, keywords, or company">
-                <input type="text" name="location" placeholder="Location">
-                <button type="submit" class="btn btn-primary">Search Jobs</button>
+        <div class="hero-layout">
+            <div class="hero-copy">
+                <div class="hero-kicker">
+                    <span class="hero-kicker-dot"></span>
+                    Powered by {{ ai_provider_label }} · {{ ai_model_name }}
+                </div>
+                <h1>Find sharper matches. <span class="highlight">Hire with signal.</span></h1>
+                <p class="hero-subtitle">Search open roles, score resumes, and surface stronger opportunities with an AI layer you can actually swap and control.</p>
+
+                <form class="hero-search" action="{{ url_for('jobs_list') }}" method="GET">
+                    <div class="search-inputs">
+                        <input type="text" name="search" placeholder="Job title, keywords, or company">
+                        <input type="text" name="location" placeholder="Location">
+                        <button type="submit" class="btn btn-primary">Search Jobs</button>
+                    </div>
+                </form>
+
+                <div class="hero-trust">
+                    <span>Resume scoring</span>
+                    <span>Role recommendations</span>
+                    <span>Recruiter workflow</span>
+                </div>
             </div>
-        </form>
-        
-        <div class="hero-stats">
-            <div class="stat">
-                <span class="stat-number">{{ stats.jobs }}</span>
-                <span class="stat-label">Active Jobs</span>
-            </div>
-            <div class="stat">
-                <span class="stat-number">{{ stats.companies }}</span>
-                <span class="stat-label">Companies</span>
-            </div>
-            <div class="stat">
-                <span class="stat-number">{{ stats.seekers }}</span>
-                <span class="stat-label">Job Seekers</span>
+
+            <div class="hero-panel">
+                <div class="hero-panel-card hero-panel-card-primary">
+                    <p class="eyebrow">Live platform snapshot</p>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <span class="stat-number">{{ stats.jobs }}</span>
+                            <span class="stat-label">Active Jobs</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">{{ stats.companies }}</span>
+                            <span class="stat-label">Hiring Teams</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">{{ stats.seekers }}</span>
+                            <span class="stat-label">Job Seekers</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-panel-card hero-panel-card-soft">
+                    <p class="eyebrow">What changed</p>
+                    <ul class="hero-checklist">
+                        <li>Cloud-hosted Ollama model support</li>
+                        <li>Cleaner search and dashboard layout</li>
+                        <li>Lower-cost AI calls on demand</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -35,27 +63,30 @@
 
 <section class="features">
     <div class="container">
-        <h2 class="section-title">Why Choose JobConnect?</h2>
+        <div class="section-heading">
+            <p class="section-kicker">Why teams use InternSphere</p>
+            <h2 class="section-title">A simpler workflow for candidates and recruiters</h2>
+        </div>
         <div class="features-grid">
             <div class="feature-card">
-                <div class="feature-icon">🤖</div>
-                <h3>AI Resume Analysis</h3>
-                <p>Get instant feedback on your resume with our AI-powered analyzer. Receive personalized suggestions to improve your chances.</p>
+                <div class="feature-icon">01</div>
+                <h3>Resume analysis that stays editable</h3>
+                <p>Generate structured strengths, missing keywords, and next-step guidance without locking yourself to a proprietary model stack.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🎯</div>
-                <h3>Smart Job Matching</h3>
-                <p>Our AI matches your skills and experience with the perfect job opportunities. No more endless scrolling.</p>
+                <div class="feature-icon">02</div>
+                <h3>Smarter job matching</h3>
+                <p>Score open roles against seeker profiles and surface the jobs worth attention instead of a noisy list ordered by recency alone.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🏢</div>
-                <h3>Top Employers</h3>
-                <p>Connect directly with verified recruiters from leading companies across all industries.</p>
+                <div class="feature-icon">03</div>
+                <h3>Recruiter-ready candidate views</h3>
+                <p>Keep hiring teams focused on actual fit with profile details, application status, and resume insights in one place.</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <h3>Career Insights</h3>
-                <p>Understand your market value, identify skill gaps, and plan your career growth with data-driven insights.</p>
+                <div class="feature-icon">04</div>
+                <h3>Cloud-first model setup</h3>
+                <p>Use Ollama Cloud for fast setup now, and keep the option to switch `OLLAMA_HOST` later if you want to run the same app locally.</p>
             </div>
         </div>
     </div>
@@ -65,7 +96,7 @@
     <div class="container">
         <div class="section-header">
             <h2 class="section-title">Featured Jobs</h2>
-            <a href="{{ url_for('jobs_list') }}" class="btn btn-outline">View All Jobs</a>
+            <a href="{{ url_for('jobs_list') }}" class="btn btn-outline">Browse All Roles</a>
         </div>
         
         <div class="jobs-grid">
@@ -87,6 +118,7 @@
                 {% if job.salary_min and job.salary_max %}
                 <div class="job-salary">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }}</div>
                 {% endif %}
+                <p class="job-card-copy">{{ (job.description or 'Explore the role, requirements, and hiring team details.')[0:120] }}{% if job.description and job.description|length > 120 %}...{% endif %}</p>
                 <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary job-apply-btn">View Details</a>
             </div>
             {% else %}
@@ -102,12 +134,13 @@
     <div class="container">
         <div class="cta-content">
             <div class="cta-text">
-                <h2>Ready to Take the Next Step?</h2>
-                <p>Join thousands of professionals who found their dream jobs through JobConnect.</p>
+                <p class="section-kicker">Ready to move?</p>
+                <h2>Launch with Ollama Cloud now, keep the stack flexible later.</h2>
+                <p>Set one API key, run the Flask app, and start testing resume analysis plus recommendations without rebuilding the product.</p>
             </div>
             <div class="cta-buttons">
-                <a href="{{ url_for('register') }}?type=seeker" class="btn btn-primary">I'm Looking for a Job</a>
-                <a href="{{ url_for('register') }}?type=recruiter" class="btn btn-outline-white">I'm Hiring</a>
+                <a href="{{ url_for('register') }}?type=seeker" class="btn btn-primary">Create Seeker Account</a>
+                <a href="{{ url_for('register') }}?type=recruiter" class="btn btn-outline-white">Create Recruiter Account</a>
             </div>
         </div>
     </div>

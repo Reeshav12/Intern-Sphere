@@ -7,7 +7,7 @@
     <div class="auth-container">
         <div class="auth-header">
             <h1>Create Your Account</h1>
-            <p>Join JobConnect and start your journey</p>
+            <p>Join InternSphere and start your journey</p>
         </div>
         
         <form class="auth-form" method="POST" action="{{ url_for('register') }}">
@@ -32,17 +32,17 @@
             
             <div class="form-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" required placeholder="Enter your email">
+                <input type="email" id="email" name="email" required autocomplete="email" placeholder="Enter your email">
             </div>
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required minlength="6" placeholder="Create a password">
+                <input type="password" id="password" name="password" required minlength="6" autocomplete="new-password" placeholder="Create a password">
             </div>
             
             <div class="form-group">
                 <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" required minlength="6" placeholder="Confirm your password">
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="6" autocomplete="new-password" placeholder="Confirm your password">
             </div>
             
             <button type="submit" class="btn btn-primary btn-full">Create Account</button>

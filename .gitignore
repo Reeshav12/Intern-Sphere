@@ -64,3 +64,4 @@ venv.bak/
 dmypy.json
 uploads/
 jobportal.db
+public/static/

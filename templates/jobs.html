@@ -6,8 +6,9 @@
 <div class="jobs-page">
     <div class="container">
         <div class="page-header">
-            <h1>Find Your Perfect Job</h1>
-            <p>Browse through thousands of opportunities</p>
+            <p class="section-kicker">Search workspace</p>
+            <h1>Find roles with better signal</h1>
+            <p>Filter by title, location, job type, and experience level, then move straight into the role details that matter.</p>
         </div>
         
         <div class="jobs-layout">
@@ -54,6 +55,10 @@
             <main class="jobs-main">
                 <div class="results-header">
                     <span>{{ jobs|length }} job{{ 's' if jobs|length != 1 }} found</span>
+                    <div class="results-meta">
+                        <span class="nav-pill nav-pill-muted">{{ ai_provider_label }}</span>
+                        <span class="nav-model">{{ ai_model_name }}</span>
+                    </div>
                 </div>
                 
                 <div class="jobs-list">
@@ -79,6 +84,7 @@
                             {% if job.salary_min and job.salary_max %}
                             <div class="job-salary">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }} / year</div>
                             {% endif %}
+                            <p class="job-card-copy">{{ (job.description or 'Open the listing to review requirements, responsibilities, and benefits.')[0:150] }}{% if job.description and job.description|length > 150 %}...{% endif %}</p>
                         </div>
                         <div class="job-card-right">
                             <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-primary">View Job</a>

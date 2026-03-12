@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "python build.py",
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.12",
+      "excludeFiles": "{static/**,uploads/**,venv/**,__pycache__/**,.git/**,.local/**,.DS_Store}"
+    }
+  },
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.py"
+    }
+  ]
+}

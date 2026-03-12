@@ -3,17 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}JobConnect{% endblock %} - Find Your Dream Job</title>
+    <title>{% block title %}InternSphere{% endblock %} - Find Your Dream Job</title>
+    <link rel="icon" href="data:,">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="page-{{ (request.endpoint or 'app')|replace('.', '-') }}">
     <nav class="navbar">
         <div class="container nav-container">
             <a href="{{ url_for('index') }}" class="logo">
                 <span class="logo-icon">JC</span>
-                <span class="logo-text">JobConnect</span>
+                <span class="logo-text">InternSphere</span>
             </a>
+
+            <div class="nav-meta">
+                <span class="nav-pill {{ 'nav-pill-live' if ai_enabled else 'nav-pill-muted' }}">
+                    {{ ai_provider_label }}
+                </span>
+                <span class="nav-model">{{ ai_model_name }}</span>
+            </div>
             
             <div class="nav-links">
                 <a href="{{ url_for('jobs_list') }}" class="nav-link">Find Jobs</a>
@@ -77,8 +88,8 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>JobConnect</h3>
-                    <p>Connecting talent with opportunity. AI-powered job matching for the modern workforce.</p>
+                    <h3>InternSphere</h3>
+                    <p>Job discovery, resume analysis, and candidate matching powered by {{ ai_provider_label }}.</p>
                 </div>
                 <div class="footer-section">
                     <h4>For Job Seekers</h4>
@@ -92,7 +103,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 JobConnect. All rights reserved.</p>
+                <p>&copy; 2026 InternSphere. Built for faster hiring and smarter job search.</p>
             </div>
         </div>
     </footer>
