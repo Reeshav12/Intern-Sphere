@@ -144,7 +144,10 @@ Vercel will:
 
 - run `python build.py`
 - copy `static/` into `public/static/`
-- route requests to `api/index.py`
+- package the Flask app from `api/index.py`
+- include `templates/` and the seed `jobportal.db` with the Python function bundle
+
+The project pins Python through `pyproject.toml`, so `vercel.json` does not need a separate `runtime` override.
 
 #### Option 2: Deploy with the Vercel CLI
 
