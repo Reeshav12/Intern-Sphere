@@ -935,7 +935,7 @@ def index():
     db = get_db()
     featured_jobs = db.execute(
         '''
-        SELECT j.*, r.company_name, r.company_logo 
+        SELECT j.*, r.company_name
         FROM jobs j 
         LEFT JOIN recruiter_profiles r ON j.recruiter_id = r.user_id
         WHERE j.is_active = 1 
@@ -1316,7 +1316,7 @@ def jobs_list():
     experience = request.args.get('experience', '')
 
     query = '''
-        SELECT j.*, r.company_name, r.company_logo 
+        SELECT j.*, r.company_name
         FROM jobs j 
         LEFT JOIN recruiter_profiles r ON j.recruiter_id = r.user_id
         WHERE j.is_active = 1
@@ -1360,8 +1360,8 @@ def job_detail(job_id):
 
     job = db.execute(
         '''
-        SELECT j.*, r.company_name, r.company_description, r.company_website, 
-               r.company_logo, r.location as company_location
+        SELECT j.*, r.company_name, r.company_description, r.company_website,
+               r.location as company_location
         FROM jobs j 
         LEFT JOIN recruiter_profiles r ON j.recruiter_id = r.user_id
         WHERE j.id = ?
