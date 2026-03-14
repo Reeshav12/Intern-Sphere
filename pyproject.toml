@@ -5,6 +5,7 @@ description = "AI-assisted job portal with Ollama-powered resume analysis and ro
 requires-python = ">=3.11"
 dependencies = [
     "flask>=3.1.2",
+    "pg8000>=1.31.2",
     "python-dotenv>=1.2.1",
     "werkzeug>=3.1.3",
 ]

@@ -1,9 +1,12 @@
 import os
 import json
+import ssl
 import sqlite3
 import shutil
+from decimal import Decimal
 from datetime import datetime
 from functools import wraps
+from urllib.parse import urlparse, unquote
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
@@ -17,6 +20,11 @@ from werkzeug.utils import secure_filename
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
+
+try:
+    import pg8000.dbapi as pg_dbapi
+except ImportError:
+    pg_dbapi = None
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'dev-secret-key-change-in-production')
@@ -36,6 +44,8 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+USE_POSTGRES = DATABASE_URL.startswith(('postgres://', 'postgresql://'))
 DATABASE = os.environ.get('DATABASE_PATH', os.path.join(RUNTIME_DATA_DIR, 'jobportal.db'))
 
 # Ollama API setup
@@ -109,8 +119,89 @@ def current_timestamp() -> str:
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
+class DictRow(dict):
+    def __init__(self, columns, values):
+        super().__init__(zip(columns, values))
+        self._values = list(values)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._values[key]
+        return super().__getitem__(key)
+
+
+class PostgresCursorWrapper:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    @property
+    def description(self):
+        return self._cursor.description
+
+    @property
+    def lastrowid(self):
+        return getattr(self._cursor, 'lastrowid', None)
+
+    def _wrap_row(self, row):
+        if row is None or not self._cursor.description:
+            return row
+        columns = [column[0] for column in self._cursor.description]
+        values = [int(value) if isinstance(value, Decimal) and value == int(value) else value for value in row]
+        return DictRow(columns, values)
+
+    def fetchone(self):
+        return self._wrap_row(self._cursor.fetchone())
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        return [self._wrap_row(row) for row in rows]
+
+
+class PostgresConnectionWrapper:
+    def __init__(self, connection):
+        self._connection = connection
+
+    def execute(self, query, params=None):
+        cursor = self._connection.cursor()
+        cursor.execute(query.replace('?', '%s'), params or ())
+        return PostgresCursorWrapper(cursor)
+
+    def commit(self):
+        self._connection.commit()
+
+    def rollback(self):
+        self._connection.rollback()
+
+    def close(self):
+        self._connection.close()
+
+
+def _postgres_connect():
+    if not pg_dbapi:
+        raise RuntimeError('pg8000 is required when DATABASE_URL points to Postgres.')
+
+    parsed = urlparse(DATABASE_URL)
+    return pg_dbapi.connect(
+        user=unquote(parsed.username or ''),
+        password=unquote(parsed.password or ''),
+        host=parsed.hostname or 'localhost',
+        port=parsed.port or 5432,
+        database=(parsed.path or '/').lstrip('/'),
+        ssl_context=ssl.create_default_context(),
+    )
+
+
+def format_salary_inr(amount):
+    if amount in (None, ''):
+        return ''
+    try:
+        return f"INR {int(amount):,}"
+    except (TypeError, ValueError):
+        return str(amount)
+
+
 def seed_runtime_database():
-    if not IS_VERCEL or os.path.exists(DATABASE):
+    if USE_POSTGRES or not IS_VERCEL or os.path.exists(DATABASE):
         return
 
     source_db = os.path.join(BASE_DIR, 'jobportal.db')
@@ -125,8 +216,12 @@ app_initialized = False
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
+        if USE_POSTGRES:
+            db = g._database = PostgresConnectionWrapper(_postgres_connect())
+        else:
+            db = g._database = sqlite3.connect(DATABASE)
+            db.row_factory = sqlite3.Row
+            db.execute('PRAGMA foreign_keys = ON')
     return db
 
 
@@ -145,7 +240,13 @@ def inject_ai_config():
         'ai_model_name': OLLAMA_MODEL,
         'ai_enabled': ollama_available(),
         'is_vercel_deployment': IS_VERCEL,
+        'currency_label': 'INR',
     }
+
+
+@app.template_filter('inr')
+def inr_filter(amount):
+    return format_salary_inr(amount)
 
 
 def initialize_application():
@@ -155,6 +256,7 @@ def initialize_application():
 
     seed_runtime_database()
     init_db()
+    seed_sample_data()
     app_initialized = True
 
 
@@ -166,101 +268,336 @@ def ensure_app_initialized():
 def init_db():
     with app.app_context():
         db = get_db()
-        db.executescript(
-            '''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                user_type TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-            
-            CREATE TABLE IF NOT EXISTS job_seeker_profiles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER UNIQUE NOT NULL,
-                full_name TEXT,
-                phone TEXT,
-                location TEXT,
-                title TEXT,
-                bio TEXT,
-                skills TEXT,
-                experience TEXT,
-                education TEXT,
-                resume_path TEXT,
-                resume_text TEXT,
-                ai_insights TEXT,
-                profile_photo TEXT,
-                linkedin_url TEXT,
-                portfolio_url TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            );
-            
-            CREATE TABLE IF NOT EXISTS recruiter_profiles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER UNIQUE NOT NULL,
-                full_name TEXT,
-                phone TEXT,
-                company_name TEXT,
-                company_description TEXT,
-                company_website TEXT,
-                company_logo TEXT,
-                industry TEXT,
-                company_size TEXT,
-                location TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            );
-            
-            CREATE TABLE IF NOT EXISTS jobs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                recruiter_id INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                company TEXT NOT NULL,
-                location TEXT,
-                job_type TEXT,
-                salary_min INTEGER,
-                salary_max INTEGER,
-                description TEXT,
-                requirements TEXT,
-                benefits TEXT,
-                skills_required TEXT,
-                experience_level TEXT,
-                is_active INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (recruiter_id) REFERENCES users(id)
-            );
-            
-            CREATE TABLE IF NOT EXISTS applications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                job_id INTEGER NOT NULL,
-                seeker_id INTEGER NOT NULL,
-                cover_letter TEXT,
-                status TEXT DEFAULT 'pending',
-                recruiter_notes TEXT,
-                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (job_id) REFERENCES jobs(id),
-                FOREIGN KEY (seeker_id) REFERENCES users(id),
-                UNIQUE(job_id, seeker_id)
-            );
-            
-            CREATE TABLE IF NOT EXISTS saved_jobs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                job_id INTEGER NOT NULL,
-                seeker_id INTEGER NOT NULL,
-                saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (job_id) REFERENCES jobs(id),
-                FOREIGN KEY (seeker_id) REFERENCES users(id),
-                UNIQUE(job_id, seeker_id)
-            );
-        '''
-        )
+        statements = []
+        if USE_POSTGRES:
+            statements = [
+                '''
+                CREATE TABLE IF NOT EXISTS users (
+                    id BIGSERIAL PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    user_type TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS job_seeker_profiles (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    full_name TEXT,
+                    phone TEXT,
+                    location TEXT,
+                    title TEXT,
+                    bio TEXT,
+                    skills TEXT,
+                    experience TEXT,
+                    education TEXT,
+                    resume_path TEXT,
+                    resume_text TEXT,
+                    ai_insights TEXT,
+                    profile_photo TEXT,
+                    linkedin_url TEXT,
+                    portfolio_url TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS recruiter_profiles (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    full_name TEXT,
+                    phone TEXT,
+                    company_name TEXT,
+                    company_description TEXT,
+                    company_website TEXT,
+                    company_logo TEXT,
+                    industry TEXT,
+                    company_size TEXT,
+                    location TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS jobs (
+                    id BIGSERIAL PRIMARY KEY,
+                    recruiter_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    title TEXT NOT NULL,
+                    company TEXT NOT NULL,
+                    location TEXT,
+                    job_type TEXT,
+                    salary_min INTEGER,
+                    salary_max INTEGER,
+                    description TEXT,
+                    requirements TEXT,
+                    benefits TEXT,
+                    skills_required TEXT,
+                    experience_level TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS applications (
+                    id BIGSERIAL PRIMARY KEY,
+                    job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+                    seeker_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    cover_letter TEXT,
+                    status TEXT DEFAULT 'pending',
+                    recruiter_notes TEXT,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(job_id, seeker_id)
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS saved_jobs (
+                    id BIGSERIAL PRIMARY KEY,
+                    job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+                    seeker_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(job_id, seeker_id)
+                )
+                ''',
+            ]
+        else:
+            statements = [
+                '''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    user_type TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS job_seeker_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER UNIQUE NOT NULL,
+                    full_name TEXT,
+                    phone TEXT,
+                    location TEXT,
+                    title TEXT,
+                    bio TEXT,
+                    skills TEXT,
+                    experience TEXT,
+                    education TEXT,
+                    resume_path TEXT,
+                    resume_text TEXT,
+                    ai_insights TEXT,
+                    profile_photo TEXT,
+                    linkedin_url TEXT,
+                    portfolio_url TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS recruiter_profiles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER UNIQUE NOT NULL,
+                    full_name TEXT,
+                    phone TEXT,
+                    company_name TEXT,
+                    company_description TEXT,
+                    company_website TEXT,
+                    company_logo TEXT,
+                    industry TEXT,
+                    company_size TEXT,
+                    location TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS jobs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    recruiter_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    company TEXT NOT NULL,
+                    location TEXT,
+                    job_type TEXT,
+                    salary_min INTEGER,
+                    salary_max INTEGER,
+                    description TEXT,
+                    requirements TEXT,
+                    benefits TEXT,
+                    skills_required TEXT,
+                    experience_level TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (recruiter_id) REFERENCES users(id)
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS applications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    job_id INTEGER NOT NULL,
+                    seeker_id INTEGER NOT NULL,
+                    cover_letter TEXT,
+                    status TEXT DEFAULT 'pending',
+                    recruiter_notes TEXT,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (job_id) REFERENCES jobs(id),
+                    FOREIGN KEY (seeker_id) REFERENCES users(id),
+                    UNIQUE(job_id, seeker_id)
+                )
+                ''',
+                '''
+                CREATE TABLE IF NOT EXISTS saved_jobs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    job_id INTEGER NOT NULL,
+                    seeker_id INTEGER NOT NULL,
+                    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (job_id) REFERENCES jobs(id),
+                    FOREIGN KEY (seeker_id) REFERENCES users(id),
+                    UNIQUE(job_id, seeker_id)
+                )
+                ''',
+            ]
+
+        for statement in statements:
+            db.execute(statement)
         db.commit()
+
+
+def _create_sample_recruiters(db, start_index=0, total=50):
+    recruiter_templates = [
+        ('Aarav', 'Mehta', 'TechNova', 'Technology', '11-50', 'Bengaluru', 'Platform Engineer'),
+        ('Ishita', 'Sharma', 'Finverse', 'Fintech', '51-200', 'Mumbai', 'Product Designer'),
+        ('Rohan', 'Patel', 'HealthGrid', 'Healthcare', '51-200', 'Hyderabad', 'Data Analyst'),
+        ('Ananya', 'Singh', 'RetailSpark', 'Retail', '11-50', 'Delhi', 'Growth Marketer'),
+        ('Kabir', 'Gupta', 'CloudNest', 'SaaS', '201-500', 'Pune', 'Frontend Developer'),
+        ('Meera', 'Nair', 'EduBloom', 'EdTech', '11-50', 'Chennai', 'Customer Success Specialist'),
+        ('Vivaan', 'Joshi', 'LogiCore', 'Logistics', '51-200', 'Ahmedabad', 'Operations Manager'),
+        ('Siya', 'Reddy', 'GreenGrid', 'Climate Tech', '11-50', 'Gurugram', 'Business Analyst'),
+        ('Arjun', 'Kapoor', 'MediaMint', 'Media', '201-500', 'Noida', 'Content Strategist'),
+        ('Diya', 'Verma', 'SecureStack', 'Cybersecurity', '51-200', 'Kolkata', 'Security Engineer'),
+    ]
+
+    for index in range(start_index, total):
+        first_name, last_name, brand, industry, company_size, location, role = recruiter_templates[index % len(recruiter_templates)]
+        company_name = f'{brand} Labs {index + 1}'
+        email = f'sample.recruiter{index + 1}@internsphere.demo'
+        full_name = f'{first_name} {last_name} {index + 1}'
+        password = generate_password_hash('demo123')
+
+        recruiter_user = db.execute('INSERT INTO users (email, password, user_type) VALUES (?, ?, ?) RETURNING id', (email, password, 'recruiter')).fetchone()
+        recruiter_id = recruiter_user['id']
+        db.execute(
+            '''
+            INSERT INTO recruiter_profiles (
+                user_id, full_name, phone, company_name, company_description,
+                company_website, industry, company_size, location, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                recruiter_id,
+                full_name,
+                f'+91-90000{index:05d}',
+                company_name,
+                f'{company_name} hires across engineering, product, sales, and operations roles in India.',
+                f'https://{brand.lower()}labs{index + 1}.example.com',
+                industry,
+                company_size,
+                location,
+                current_timestamp(),
+            ),
+        )
+        db.execute(
+            '''
+            INSERT INTO jobs (
+                recruiter_id, title, company, location, job_type, salary_min, salary_max,
+                description, requirements, benefits, skills_required, experience_level, is_active, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                recruiter_id,
+                role,
+                company_name,
+                location,
+                ['full-time', 'remote', 'contract', 'internship'][index % 4],
+                400000 + (index * 15000),
+                650000 + (index * 18000),
+                f'Join {company_name} to build high-impact products for customers across India.',
+                'Strong communication, role-specific problem solving, and collaborative execution.',
+                'Health cover, flexible work, learning budget, and performance bonus.',
+                'Python, SQL, Communication, Problem Solving',
+                ['entry', 'mid', 'senior'][index % 3],
+                1,
+                current_timestamp(),
+            ),
+        )
+
+
+def _create_sample_seekers(db, start_index=0, total=50):
+    seeker_templates = [
+        ('Priya', 'Iyer', 'Frontend Developer', 'Bengaluru', 'React, JavaScript, CSS, Figma', '2 years building web apps', 'B.Tech Computer Science'),
+        ('Rahul', 'Malhotra', 'Backend Developer', 'Pune', 'Python, Flask, PostgreSQL, APIs', '3 years building backend services', 'B.E. Information Technology'),
+        ('Sneha', 'Kulkarni', 'UI/UX Designer', 'Mumbai', 'Figma, UX Research, Wireframing, Prototyping', '2 years in product design', 'B.Des Interaction Design'),
+        ('Aditya', 'Saxena', 'Data Analyst', 'Hyderabad', 'SQL, Excel, Power BI, Python', '2 years in analytics', 'B.Sc Statistics'),
+        ('Kavya', 'Menon', 'Product Manager', 'Chennai', 'Roadmapping, Analytics, Stakeholder Management', '4 years in product delivery', 'MBA Product Management'),
+        ('Neel', 'Chopra', 'DevOps Engineer', 'Noida', 'AWS, Docker, CI/CD, Linux', '3 years in cloud operations', 'B.Tech Electronics'),
+        ('Pooja', 'Bansal', 'Marketing Specialist', 'Delhi', 'SEO, Performance Marketing, Content Strategy', '2 years in digital marketing', 'BBA Marketing'),
+        ('Nikhil', 'Das', 'Operations Associate', 'Kolkata', 'Operations, Excel, Vendor Management, Reporting', '1 year in operations', 'B.Com'),
+        ('Tanvi', 'Jain', 'Customer Success Manager', 'Ahmedabad', 'CRM, Communication, Onboarding, Retention', '3 years in customer success', 'BA English'),
+        ('Yash', 'Agarwal', 'Security Analyst', 'Gurugram', 'SIEM, Networking, Incident Response, Python', '2 years in security operations', 'B.Tech Cybersecurity'),
+    ]
+
+    for index in range(start_index, total):
+        first_name, last_name, title, location, skills, experience, education = seeker_templates[index % len(seeker_templates)]
+        email = f'sample.seeker{index + 1}@internsphere.demo'
+        full_name = f'{first_name} {last_name} {index + 1}'
+        password = generate_password_hash('demo123')
+
+        seeker_user = db.execute('INSERT INTO users (email, password, user_type) VALUES (?, ?, ?) RETURNING id', (email, password, 'seeker')).fetchone()
+        seeker_id = seeker_user['id']
+        db.execute(
+            '''
+            INSERT INTO job_seeker_profiles (
+                user_id, full_name, phone, location, title, bio, skills, experience,
+                education, resume_text, linkedin_url, portfolio_url, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                seeker_id,
+                full_name,
+                f'+91-80000{index:05d}',
+                location,
+                title,
+                f'{full_name} is actively exploring their next role and is available for interviews.',
+                skills,
+                experience,
+                education,
+                f'Resume summary for {full_name}: {skills}. {experience}.',
+                f'https://linkedin.com/in/sample-seeker-{index + 1}',
+                f'https://portfolio.example.com/sample-seeker-{index + 1}',
+                current_timestamp(),
+            ),
+        )
+
+
+def seed_sample_data():
+    db = get_db()
+    recruiter_count = db.execute(
+        "SELECT COUNT(*) FROM users WHERE email LIKE 'sample.recruiter%@internsphere.demo'"
+    ).fetchone()[0]
+    seeker_count = db.execute(
+        "SELECT COUNT(*) FROM users WHERE email LIKE 'sample.seeker%@internsphere.demo'"
+    ).fetchone()[0]
+
+    if recruiter_count < 50:
+        _create_sample_recruiters(db, start_index=recruiter_count, total=50)
+    if seeker_count < 50:
+        _create_sample_seekers(db, start_index=seeker_count, total=50)
+    db.commit()
 
 
 def allowed_file(filename: str) -> bool:
@@ -501,11 +838,10 @@ def register():
             return render_template('register.html')
 
         hashed_password = generate_password_hash(password)
-        cursor = db.execute(
-            'INSERT INTO users (email, password, user_type) VALUES (?, ?, ?)',
+        user_id = db.execute(
+            'INSERT INTO users (email, password, user_type) VALUES (?, ?, ?) RETURNING id',
             (email, hashed_password, user_type),
-        )
-        user_id = cursor.lastrowid
+        ).fetchone()['id']
 
         if user_type == 'seeker':
             db.execute('INSERT INTO job_seeker_profiles (user_id) VALUES (?)', (user_id,))

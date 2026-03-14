@@ -22,7 +22,7 @@
                             {% endif %}
                         </div>
                         {% if job.salary_min and job.salary_max %}
-                        <div class="salary-large">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }} / year</div>
+                        <div class="salary-large">{{ job.salary_min|inr }} - {{ job.salary_max|inr }} / year</div>
                         {% endif %}
                     </div>
                 </div>

@@ -116,7 +116,7 @@
                     <span class="job-type">{{ job.job_type or 'Full-time' }}</span>
                 </div>
                 {% if job.salary_min and job.salary_max %}
-                <div class="job-salary">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }}</div>
+                <div class="job-salary">{{ job.salary_min|inr }} - {{ job.salary_max|inr }}</div>
                 {% endif %}
                 <p class="job-card-copy">{{ (job.description or 'Explore the role, requirements, and hiring team details.')[0:120] }}{% if job.description and job.description|length > 120 %}...{% endif %}</p>
                 <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-secondary job-apply-btn">View Details</a>

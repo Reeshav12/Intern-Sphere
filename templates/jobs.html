@@ -82,7 +82,7 @@
                                 {% endif %}
                             </div>
                             {% if job.salary_min and job.salary_max %}
-                            <div class="job-salary">${{ "{:,}".format(job.salary_min) }} - ${{ "{:,}".format(job.salary_max) }} / year</div>
+                            <div class="job-salary">{{ job.salary_min|inr }} - {{ job.salary_max|inr }} / year</div>
                             {% endif %}
                             <p class="job-card-copy">{{ (job.description or 'Open the listing to review requirements, responsibilities, and benefits.')[0:150] }}{% if job.description and job.description|length > 150 %}...{% endif %}</p>
                         </div>

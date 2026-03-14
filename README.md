@@ -15,7 +15,7 @@ InternSphere is a Flask-based job portal for job seekers and recruiters. It incl
 ## Tech Stack
 
 - Backend: Flask
-- Database: SQLite
+- Database: SQLite locally, Postgres on Vercel via `DATABASE_URL`
 - Frontend: Jinja templates, vanilla JavaScript, custom CSS
 - AI provider: Ollama Cloud by default, local Ollama supported
 
@@ -110,15 +110,14 @@ This repo now includes the files needed for a Vercel deployment:
 - `api/index.py`
 - `build.py`
 
-### Important limitation
+### Database on Vercel
 
-Vercel is fine for a demo of this app, but the current SQLite database is not production-safe there.
+This app now supports a persistent Postgres database on Vercel.
 
-- Vercel functions run on ephemeral storage.
-- The app uses `/tmp/internsphere/jobportal.db` on Vercel so writes work during execution.
-- Data is not guaranteed to persist across deployments, cold starts, or scaling events.
-
-For production, move the database to Postgres, Neon, Supabase, PlanetScale, or another managed database.
+- Local development still defaults to SQLite.
+- On Vercel, set `DATABASE_URL` to a managed Postgres database such as Vercel Postgres, Neon, or Supabase.
+- If `DATABASE_URL` is not set, the app falls back to the old `/tmp/internsphere/jobportal.db` demo behavior and data can still reset.
+- On first boot, the app auto-seeds 50 sample recruiters, 50 sample job seekers, and sample jobs for testing.
 
 ### Deploy steps
 
@@ -130,6 +129,7 @@ For production, move the database to Postgres, Neon, Supabase, PlanetScale, or a
 4. In Vercel project settings, add these environment variables:
 
 ```env
+DATABASE_URL=postgres://...
 SESSION_SECRET=your-production-secret
 OLLAMA_HOST=https://ollama.com
 OLLAMA_API_KEY=your_ollama_api_key
@@ -145,7 +145,7 @@ Vercel will:
 - run `python build.py`
 - copy `static/` into `public/static/`
 - package the Flask app from `api/index.py`
-- include `templates/` and the seed `jobportal.db` with the Python function bundle
+- include `templates/` and the SQLite fallback `jobportal.db` with the Python function bundle
 
 The project pins Python through `pyproject.toml`, so `vercel.json` does not need a separate `runtime` override.
 
@@ -177,14 +177,14 @@ If this repository already exists locally, just set the remote and push.
 
 If you want this app to be production-ready, the next upgrades should be:
 
-1. Replace SQLite with Postgres.
-2. Store uploaded resumes in cloud storage such as S3, Cloudinary, or Vercel Blob.
-3. Add PDF/DOCX text extraction so resume analysis works beyond `.txt` uploads.
-4. Move session storage and secrets management to a production-safe setup.
-5. Add CSRF protection and stricter input validation.
+1. Store uploaded resumes in cloud storage such as S3, Cloudinary, or Vercel Blob.
+2. Add PDF/DOCX text extraction so resume analysis works beyond `.txt` uploads.
+3. Move session storage and secrets management to a production-safe setup.
+4. Add CSRF protection and stricter input validation.
+5. Add an admin control to disable or refresh demo seed data outside development.
 
 ## Current Limitations
 
 - PDF and DOC/DOCX resumes upload successfully, but only `.txt` resumes are fully analyzable right now.
 - AI analysis and recommendations require a valid Ollama API key or a reachable local Ollama server.
-- Vercel deployment is best treated as a demo unless the database and file storage are moved off local disk.
+- Vercel deployment still needs cloud file storage for uploaded resumes because local disk is temporary.
