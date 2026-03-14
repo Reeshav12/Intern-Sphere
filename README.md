@@ -67,6 +67,8 @@ PORT=5000
 FLASK_DEBUG=true
 ```
 
+Replace `your_ollama_api_key` with your actual Ollama Cloud key before starting the app. Leaving the example value in place will cause Ollama Cloud requests to fail with an authorization error.
+
 ### 4. Run the app
 
 ```bash

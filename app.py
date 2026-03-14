@@ -17,6 +17,11 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
+try:
+    import certifi
+except ImportError:
+    certifi = None
+
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
@@ -50,9 +55,14 @@ DATABASE = os.environ.get('DATABASE_PATH', os.path.join(RUNTIME_DATA_DIR, 'jobpo
 
 # Ollama API setup
 OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'https://ollama.com').rstrip('/')
-OLLAMA_API_KEY = os.environ.get('OLLAMA_API_KEY')
+OLLAMA_API_KEY = (os.environ.get('OLLAMA_API_KEY') or '').strip() or None
 OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'gpt-oss:20b')
 OLLAMA_TIMEOUT = int(os.environ.get('OLLAMA_TIMEOUT', '60'))
+PLACEHOLDER_OLLAMA_KEYS = {'your_ollama_api_key', 'ollama_api_key'}
+LAST_OLLAMA_ERROR = None
+
+if OLLAMA_API_KEY in PLACEHOLDER_OLLAMA_KEYS:
+    OLLAMA_API_KEY = None
 
 
 def _ollama_api_url(path: str) -> str:
@@ -72,6 +82,23 @@ def ollama_available() -> bool:
     return True
 
 
+def _ollama_key_error_message() -> str:
+    return 'Set OLLAMA_API_KEY in .env to a real Ollama Cloud key.'
+
+
+def _set_ollama_error(message: str | None):
+    global LAST_OLLAMA_ERROR
+    LAST_OLLAMA_ERROR = message
+
+
+def _get_ollama_ssl_context():
+    if not OLLAMA_HOST.startswith('https://'):
+        return None
+    if certifi is not None:
+        return ssl.create_default_context(cafile=certifi.where())
+    return ssl.create_default_context()
+
+
 def _ollama_headers():
     headers = {
         'Content-Type': 'application/json',
@@ -86,6 +113,7 @@ def ollama_chat(messages, *, model: str | None = None, temperature: float = 0.2)
     if not ollama_available():
         return None
 
+    _set_ollama_error(None)
     payload = {
         'model': model or OLLAMA_MODEL,
         'messages': messages,
@@ -102,13 +130,28 @@ def ollama_chat(messages, *, model: str | None = None, temperature: float = 0.2)
     )
 
     try:
-        with urllib_request.urlopen(http_request, timeout=OLLAMA_TIMEOUT) as response:
+        with urllib_request.urlopen(
+            http_request,
+            timeout=OLLAMA_TIMEOUT,
+            context=_get_ollama_ssl_context(),
+        ) as response:
             data = json.loads(response.read().decode('utf-8'))
     except urllib_error.HTTPError as error:
         error_body = error.read().decode('utf-8', errors='ignore')
+        if error.code == 401:
+            _set_ollama_error('Ollama Cloud rejected the API key. Please verify OLLAMA_API_KEY.')
+        elif error.code == 404:
+            _set_ollama_error(f'Ollama model "{model or OLLAMA_MODEL}" was not found.')
+        else:
+            _set_ollama_error(f'Ollama API error ({error.code}). Please try again in a moment.')
         print(f'Ollama API error ({error.code}): {error_body}')
         return None
+    except ssl.SSLError as error:
+        _set_ollama_error(f'Ollama SSL error: {error}')
+        print(f'Ollama SSL error: {error}')
+        return None
     except Exception as error:
+        _set_ollama_error(f'Ollama request error: {error}')
         print(f'Ollama request error: {error}')
         return None
 
@@ -264,8 +307,9 @@ def initialize_application():
         return
 
     seed_runtime_database()
-    init_db()
-    seed_sample_data()
+    with app.app_context():
+        init_db()
+        seed_sample_data()
     app_initialized = True
 
 
@@ -591,6 +635,89 @@ def _create_sample_seekers(db, start_index=0, total=50):
         )
 
 
+def _create_specialist_sample_jobs(db):
+    recruiters = db.execute(
+        '''
+        SELECT u.id, rp.company_name, rp.location
+        FROM users u
+        JOIN recruiter_profiles rp ON rp.user_id = u.id
+        WHERE u.email LIKE 'sample.recruiter%@internsphere.demo'
+        ORDER BY u.id
+        LIMIT 20
+        '''
+    ).fetchall()
+
+    existing_pairs = {
+        (row['recruiter_id'], row['title'])
+        for row in db.execute(
+            '''
+            SELECT recruiter_id, title
+            FROM jobs
+            WHERE title IN ('Full Stack Developer', 'Java Developer')
+              AND recruiter_id IN (
+                  SELECT id FROM users WHERE email LIKE 'sample.recruiter%@internsphere.demo'
+              )
+            '''
+        ).fetchall()
+    }
+
+    role_templates = [
+        {
+            'title': 'Full Stack Developer',
+            'job_type': 'full-time',
+            'salary_min': 700000,
+            'salary_max': 1100000,
+            'description': 'Build end-to-end product features across React frontends, APIs, and cloud deployments.',
+            'requirements': '2+ years of experience with modern JavaScript, backend APIs, databases, and production debugging.',
+            'benefits': 'Hybrid work, health insurance, learning stipend, and performance bonus.',
+            'skills_required': 'React, Node.js, Python, SQL, REST APIs, Docker',
+            'experience_level': 'mid',
+        },
+        {
+            'title': 'Java Developer',
+            'job_type': 'full-time',
+            'salary_min': 650000,
+            'salary_max': 1050000,
+            'description': 'Design and ship backend services in Java for customer-facing products and internal platforms.',
+            'requirements': '2+ years of experience with Java, Spring Boot, relational databases, and API development.',
+            'benefits': 'Remote flexibility, insurance cover, certification budget, and paid leave.',
+            'skills_required': 'Java, Spring Boot, MySQL, REST APIs, Microservices, Git',
+            'experience_level': 'mid',
+        },
+    ]
+
+    for index, recruiter in enumerate(recruiters):
+        template = role_templates[index % len(role_templates)]
+        role_key = (recruiter['id'], template['title'])
+        if role_key in existing_pairs:
+            continue
+
+        db.execute(
+            '''
+            INSERT INTO jobs (
+                recruiter_id, title, company, location, job_type, salary_min, salary_max,
+                description, requirements, benefits, skills_required, experience_level, is_active, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (
+                recruiter['id'],
+                template['title'],
+                recruiter['company_name'],
+                recruiter['location'],
+                template['job_type'],
+                template['salary_min'] + (index * 10000),
+                template['salary_max'] + (index * 12000),
+                template['description'],
+                template['requirements'],
+                template['benefits'],
+                template['skills_required'],
+                template['experience_level'],
+                1,
+                current_timestamp(),
+            ),
+        )
+
+
 def seed_sample_data():
     db = get_db()
     recruiter_count = db.execute(
@@ -604,6 +731,7 @@ def seed_sample_data():
         _create_sample_recruiters(db, start_index=recruiter_count, total=50)
     if seeker_count < 50:
         _create_sample_seekers(db, start_index=seeker_count, total=50)
+    _create_specialist_sample_jobs(db)
     db.commit()
 
 
@@ -713,8 +841,14 @@ Required JSON format:
             temperature=0.2,
         )
         if not content:
+            if not LAST_OLLAMA_ERROR:
+                _set_ollama_error('Ollama returned an empty response.')
             return None
-        return _extract_json_from_text(content)
+        result = _extract_json_from_text(content)
+        if not result:
+            _set_ollama_error('Ollama returned a response, but it was not valid JSON.')
+            return None
+        return result
     except Exception as error:
         print(f'AI analysis error: {error}')
         return None
@@ -1139,7 +1273,7 @@ def analyze_resume():
             return jsonify(
                 {
                     'success': False,
-                    'error': 'AI analysis is not available. Please configure OLLAMA_API_KEY.',
+                    'error': f'AI analysis is not available. {_ollama_key_error_message()}',
                 }
             )
         return jsonify(
@@ -1164,7 +1298,12 @@ def analyze_resume():
 
         return jsonify({'success': True, 'insights': insights})
 
-    return jsonify({'error': 'Failed to analyze resume'}), 500
+    return jsonify(
+        {
+            'success': False,
+            'error': LAST_OLLAMA_ERROR or 'Resume analysis did not return valid JSON. Please try again.',
+        }
+    ), 500
 
 
 @app.route('/jobs')
@@ -1576,7 +1715,7 @@ def api_job_suggestions():
 
     if not ollama_available():
         if _using_ollama_cloud():
-            return jsonify({'success': False, 'error': 'Please configure OLLAMA_API_KEY first.'})
+            return jsonify({'success': False, 'error': _ollama_key_error_message()})
         return jsonify({'success': False, 'error': 'Start Ollama locally or configure OLLAMA_HOST first.'})
 
     recommendations = get_job_recommendations(dict(profile))
