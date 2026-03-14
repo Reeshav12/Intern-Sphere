@@ -200,6 +200,15 @@ def format_salary_inr(amount):
         return str(amount)
 
 
+def demo_password_hash():
+    cached_hash = getattr(app, '_demo_password_hash', None)
+    if cached_hash:
+        return cached_hash
+
+    app._demo_password_hash = generate_password_hash('demo123')
+    return app._demo_password_hash
+
+
 def seed_runtime_database():
     if USE_POSTGRES or not IS_VERCEL or os.path.exists(DATABASE):
         return
@@ -482,13 +491,12 @@ def _create_sample_recruiters(db, start_index=0, total=50):
         ('Diya', 'Verma', 'SecureStack', 'Cybersecurity', '51-200', 'Kolkata', 'Security Engineer'),
     ]
 
+    password = demo_password_hash()
     for index in range(start_index, total):
         first_name, last_name, brand, industry, company_size, location, role = recruiter_templates[index % len(recruiter_templates)]
         company_name = f'{brand} Labs {index + 1}'
         email = f'sample.recruiter{index + 1}@internsphere.demo'
         full_name = f'{first_name} {last_name} {index + 1}'
-        password = generate_password_hash('demo123')
-
         recruiter_user = db.execute('INSERT INTO users (email, password, user_type) VALUES (?, ?, ?) RETURNING id', (email, password, 'recruiter')).fetchone()
         recruiter_id = recruiter_user['id']
         db.execute(
@@ -551,12 +559,11 @@ def _create_sample_seekers(db, start_index=0, total=50):
         ('Yash', 'Agarwal', 'Security Analyst', 'Gurugram', 'SIEM, Networking, Incident Response, Python', '2 years in security operations', 'B.Tech Cybersecurity'),
     ]
 
+    password = demo_password_hash()
     for index in range(start_index, total):
         first_name, last_name, title, location, skills, experience, education = seeker_templates[index % len(seeker_templates)]
         email = f'sample.seeker{index + 1}@internsphere.demo'
         full_name = f'{first_name} {last_name} {index + 1}'
-        password = generate_password_hash('demo123')
-
         seeker_user = db.execute('INSERT INTO users (email, password, user_type) VALUES (?, ?, ?) RETURNING id', (email, password, 'seeker')).fetchone()
         seeker_id = seeker_user['id']
         db.execute(
