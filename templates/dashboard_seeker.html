@@ -132,7 +132,7 @@
                             </div>
                             <div class="application-meta">
                                 <span class="status status-{{ app.status }}">{{ app.status|title }}</span>
-                                <span class="date">{{ app.applied_at[:10] }}</span>
+                                <span class="date">{{ app.applied_at|date_only }}</span>
                             </div>
                         </div>
                         {% endfor %}

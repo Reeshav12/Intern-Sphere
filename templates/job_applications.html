@@ -70,7 +70,7 @@
                 </div>
                 
                 <div class="applicant-meta">
-                    <span>Applied: {{ app.applied_at[:10] }}</span>
+                    <span>Applied: {{ app.applied_at|date_only }}</span>
                 </div>
             </div>
             {% endfor %}

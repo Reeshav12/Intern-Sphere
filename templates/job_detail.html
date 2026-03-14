@@ -101,7 +101,7 @@
                     <h3>Job Information</h3>
                     <div class="info-item">
                         <span class="info-label">Posted</span>
-                        <span class="info-value">{{ job.created_at[:10] }}</span>
+                        <span class="info-value">{{ job.created_at|date_only }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Job Type</span>

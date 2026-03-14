@@ -301,6 +301,15 @@ def inr_filter(amount):
     return format_salary_inr(amount)
 
 
+@app.template_filter('date_only')
+def date_only_filter(value):
+    if not value:
+        return ''
+    if hasattr(value, 'strftime'):
+        return value.strftime('%Y-%m-%d')
+    return str(value)[:10]
+
+
 def initialize_application():
     global app_initialized
     if app_initialized:

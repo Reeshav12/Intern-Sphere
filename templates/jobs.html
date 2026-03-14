@@ -88,7 +88,7 @@
                         </div>
                         <div class="job-card-right">
                             <a href="{{ url_for('job_detail', job_id=job.id) }}" class="btn btn-primary">View Job</a>
-                            <span class="post-date">{{ job.created_at[:10] }}</span>
+                            <span class="post-date">{{ job.created_at|date_only }}</span>
                         </div>
                     </div>
                     {% else %}
