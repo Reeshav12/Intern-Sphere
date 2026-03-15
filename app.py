@@ -54,15 +54,33 @@ USE_POSTGRES = DATABASE_URL.startswith(('postgres://', 'postgresql://'))
 DATABASE = os.environ.get('DATABASE_PATH', os.path.join(RUNTIME_DATA_DIR, 'jobportal.db'))
 
 # Ollama API setup
-OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'https://ollama.com').rstrip('/')
-OLLAMA_API_KEY = (os.environ.get('OLLAMA_API_KEY') or '').strip() or None
-OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'gpt-oss:20b')
-OLLAMA_TIMEOUT = int(os.environ.get('OLLAMA_TIMEOUT', '60'))
 PLACEHOLDER_OLLAMA_KEYS = {'your_ollama_api_key', 'ollama_api_key'}
 LAST_OLLAMA_ERROR = None
 
-if OLLAMA_API_KEY in PLACEHOLDER_OLLAMA_KEYS:
-    OLLAMA_API_KEY = None
+
+def _read_ollama_env():
+    host = (os.environ.get('OLLAMA_HOST') or 'https://ollama.com').strip().rstrip('/')
+    api_key = (os.environ.get('OLLAMA_API_KEY') or '').strip() or None
+    model = (os.environ.get('OLLAMA_MODEL') or 'gpt-oss:20b').strip()
+    timeout_raw = (os.environ.get('OLLAMA_TIMEOUT') or '60').strip()
+    try:
+        timeout = int(timeout_raw)
+    except Exception:
+        timeout = 60
+
+    if api_key in PLACEHOLDER_OLLAMA_KEYS:
+        api_key = None
+
+    return host, api_key, model, timeout
+
+
+OLLAMA_HOST, OLLAMA_API_KEY, OLLAMA_MODEL, OLLAMA_TIMEOUT = _read_ollama_env()
+
+
+def _refresh_ollama_config():
+    # In dev, env vars can change without a restart; refresh keeps UI and endpoints in sync.
+    global OLLAMA_HOST, OLLAMA_API_KEY, OLLAMA_MODEL, OLLAMA_TIMEOUT
+    OLLAMA_HOST, OLLAMA_API_KEY, OLLAMA_MODEL, OLLAMA_TIMEOUT = _read_ollama_env()
 
 
 def _ollama_api_url(path: str) -> str:
@@ -73,10 +91,12 @@ def _ollama_api_url(path: str) -> str:
 
 
 def _using_ollama_cloud() -> bool:
+    _refresh_ollama_config()
     return 'ollama.com' in OLLAMA_HOST
 
 
 def ollama_available() -> bool:
+    _refresh_ollama_config()
     if _using_ollama_cloud():
         return bool(OLLAMA_API_KEY)
     return True
@@ -100,6 +120,7 @@ def _get_ollama_ssl_context():
 
 
 def _ollama_headers():
+    _refresh_ollama_config()
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -113,6 +134,7 @@ def ollama_chat(messages, *, model: str | None = None, temperature: float = 0.2)
     if not ollama_available():
         return None
 
+    _refresh_ollama_config()
     _set_ollama_error(None)
     payload = {
         'model': model or OLLAMA_MODEL,
