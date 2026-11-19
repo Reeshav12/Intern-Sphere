@@ -179,7 +179,7 @@ def ollama_chat(messages, *, model: str | None = None, temperature: float = 0.2)
 
     return data.get('message', {}).get('content', '')
 
-
+#db connectivity & schema
 def current_timestamp() -> str:
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -546,7 +546,7 @@ def init_db():
                 )
                 ''',
             ]
-
+# sample data generation
         for statement in statements:
             db.execute(statement)
         db.commit()
@@ -810,7 +810,7 @@ def recruiter_required(f):
 
 
 # ---------- OLLAMA HELPERS ----------
-
+# llm integration
 def _extract_json_from_text(text: str):
     """
     LLM responses sometimes wrap JSON in extra text or markdown.
@@ -835,7 +835,7 @@ def _extract_json_from_text(text: str):
             return None
     return None
 
-
+#ai- based analyze resume
 def analyze_resume_with_ai(resume_text: str):
     if not ollama_available() or not resume_text:
         return None
@@ -1245,7 +1245,7 @@ def profile():
         profile = db.execute('SELECT * FROM recruiter_profiles WHERE user_id = ?', (user_id,)).fetchone()
         return render_template('profile_recruiter.html', profile=profile)
 
-
+#resume upload and text handling
 @app.route('/upload-resume', methods=['POST'])
 @seeker_required
 def upload_resume():
@@ -1286,7 +1286,7 @@ def upload_resume():
 
     return jsonify({'error': 'Invalid file type'}), 400
 
-
+#resume analysis api workflow
 @app.route('/analyze-resume', methods=['POST'])
 @seeker_required
 def analyze_resume():
@@ -1336,7 +1336,7 @@ def analyze_resume():
         }
     ), 500
 
-
+# sql filtering & job search
 @app.route('/jobs')
 def jobs_list():
     db = get_db()
@@ -1731,7 +1731,7 @@ def candidate_profile(user_id):
 
     return render_template('candidate_profile.html', profile=profile, ai_insights=ai_insights)
 
-
+#complete recommendation api workflow
 @app.route('/api/job-suggestions', methods=['POST'])
 @seeker_required
 def api_job_suggestions():
